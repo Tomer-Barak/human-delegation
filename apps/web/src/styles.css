@@ -74,8 +74,17 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .status-awaiting_agent, .status-awaiting_agent_review { background-color: #e5b85d !important; color: #6c4b0d !important; }
 .status-completed { background-color: #7d91e7 !important; color: #2c418e !important; }
 .status-declined, .status-expired, .status-canceled, .status-delivery_failed { background-color: #e08878 !important; color: #812e21 !important; }
-.logout { margin: 12px; padding: 13px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; color: rgba(255,255,255,.65); background: transparent; }
+.sidebar-footer { display: flex; flex-direction: column; gap: 0; }
+.settings-button { margin: 12px 12px 0; padding: 10px 13px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px 10px 0 0; color: rgba(255,255,255,.75); background: transparent; text-align: left; font-size: 12px; }
+.settings-button:hover { color: white; background: rgba(255,255,255,.05); }
+.logout { margin: 0 12px 12px; padding: 10px 13px; border: 1px solid rgba(255,255,255,.12); border-top: none; border-radius: 0 0 10px 10px; color: rgba(255,255,255,.65); background: transparent; text-align: left; font-size: 12px; }
 .logout:hover { color: white; background: rgba(255,255,255,.05); }
+.settings-panel { display: flex; flex-direction: column; height: 100%; overflow-y: auto; }
+.settings-body { padding: 24px 32px; max-width: 480px; }
+.settings-form { display: flex; flex-direction: column; gap: 20px; }
+.settings-form label { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.settings-form label input, .settings-form label select { padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper); font-size: 14px; color: var(--ink); }
+.settings-form label small { font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); }
 .empty-list { color: rgba(255,255,255,.45); padding: 28px 12px; text-align: center; }
 
 .workspace { min-width: 0; min-height: 100vh; display: flex; flex-direction: column; background: #f7f8f5; }

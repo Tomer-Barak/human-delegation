@@ -103,19 +103,22 @@ function MagicAuth() {
   );
 }
 
+type HumanProfile = { displayName: string; availability: string; timezone: string };
+
 function HumanApp() {
-  const [human, setHuman] = useState<{ displayName: string } | null>(null);
+  const [human, setHuman] = useState<HumanProfile | null>(null);
   const [tasks, setTasks] = useState<HumanTask[]>([]);
   const [selectedId, setSelectedId] = useState(
     new URLSearchParams(window.location.search).get("task"),
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
 
   const refresh = async () => {
     try {
       const [profile, taskData] = await Promise.all([
-        api<{ human: { displayName: string } }>("/api/human/me"),
+        api<{ human: HumanProfile }>("/api/human/me"),
         api<{ tasks: HumanTask[] }>("/api/human/tasks"),
       ]);
       setHuman(profile.human);
@@ -169,8 +172,8 @@ function HumanApp() {
           {tasks.map((task) => (
             <button
               key={task.id}
-              className={`task-row ${task.id === selectedId ? "selected" : ""}`}
-              onClick={() => setSelectedId(task.id)}
+              className={`task-row ${task.id === selectedId ? "selected" : ""} ${showSettings ? "" : ""}`}
+              onClick={() => { setSelectedId(task.id); setShowSettings(false); }}
             >
               <div className="row-top">
                 <span className={`status-dot status-${task.status}`} />
@@ -181,18 +184,25 @@ function HumanApp() {
             </button>
           ))}
         </div>
-        <button
-          className="logout"
-          onClick={async () => {
-            await api("/api/auth/logout", { method: "POST" });
-            window.location.reload();
-          }}
-        >
-          Sign out
-        </button>
+        <div className="sidebar-footer">
+          <button className="settings-button" onClick={() => setShowSettings((s) => !s)}>
+            ⚙ {human.availability}
+          </button>
+          <button
+            className="logout"
+            onClick={async () => {
+              await api("/api/auth/logout", { method: "POST" });
+              window.location.reload();
+            }}
+          >
+            Sign out
+          </button>
+        </div>
       </aside>
       <main className="workspace">
-        {selected ? (
+        {showSettings ? (
+          <SettingsPanel human={human} onSaved={(updated) => { setHuman(updated); setShowSettings(false); }} />
+        ) : selected ? (
           <TaskView task={selected} onChanged={refresh} />
         ) : (
           <div className="empty-workspace">
@@ -202,6 +212,69 @@ function HumanApp() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function SettingsPanel({ human, onSaved }: { human: HumanProfile; onSaved: (updated: HumanProfile) => void }) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    try {
+      const { human: updated } = await api<{ human: HumanProfile }>("/api/human/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          displayName: data.get("displayName"),
+          availability: data.get("availability"),
+          timezone: data.get("timezone"),
+        }),
+      });
+      onSaved(updated);
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="settings-panel">
+      <header className="task-header">
+        <div>
+          <div className="eyebrow">Profile</div>
+          <h1>Your settings</h1>
+        </div>
+      </header>
+      <div className="settings-body">
+        <form className="settings-form" onSubmit={submit}>
+          <label>
+            Display name
+            <input name="displayName" defaultValue={human.displayName} required />
+          </label>
+          <label>
+            Availability
+            <select name="availability" defaultValue={human.availability}>
+              <option value="available">available</option>
+              <option value="busy">busy</option>
+              <option value="away">away</option>
+              <option value="on leave">on leave</option>
+            </select>
+            <small>Agents see this when deciding who to delegate to.</small>
+          </label>
+          <label>
+            Timezone
+            <input name="timezone" defaultValue={human.timezone} placeholder="UTC" />
+            <small>IANA timezone name, e.g. America/New_York or Europe/Berlin.</small>
+          </label>
+          {error && <p className="form-error">{error}</p>}
+          <button className="primary-button" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
+        </form>
+      </div>
     </div>
   );
 }

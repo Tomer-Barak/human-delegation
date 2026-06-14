@@ -339,6 +339,30 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     };
   });
 
+  prefixed.patch("/api/human/me", async (request) => {
+    const session = requireHumanSession(request, config);
+    const body = request.body as {
+      displayName?: string;
+      availability?: string;
+      timezone?: string;
+    };
+    const human = repository.updateHuman(session.humanId, {
+      ...(body.displayName?.trim() ? { displayName: body.displayName.trim() } : {}),
+      ...(body.availability?.trim() ? { availability: body.availability.trim() } : {}),
+      ...(body.timezone?.trim() ? { timezone: body.timezone.trim() } : {}),
+    });
+    if (!human) throw Object.assign(new Error("Unauthorized"), { statusCode: 401 });
+    return {
+      human: {
+        id: human.id,
+        displayName: human.displayName,
+        skills: JSON.parse(human.skillsJson) as string[],
+        availability: human.availability,
+        timezone: human.timezone,
+      },
+    };
+  });
+
   prefixed.get("/api/human/tasks", async (request) => {
     const session = requireHumanSession(request, config);
     return { tasks: taskService.listForHuman(session.humanId) };
