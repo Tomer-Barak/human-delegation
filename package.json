@@ -1,0 +1,14 @@
+{
+  "name": "delegate-to-human",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.6.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --parallel --filter @delegate-to-human/server --filter @delegate-to-human/web dev",
+    "lint": "pnpm -r lint",
+    "start": "pnpm --filter @delegate-to-human/server start",
+    "test": "pnpm --filter @delegate-to-human/server test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
