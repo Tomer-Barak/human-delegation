@@ -78,8 +78,25 @@ function MagicAuth() {
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
+
+    // If the link is missing or already used, the person may still hold a
+    // valid session in this browser (the link is one-time, the cookie lasts
+    // 30 days). Fall back to that before showing an error.
+    const fallBackToSession = async () => {
+      try {
+        await api<{ human: unknown }>("/api/human/me");
+        window.location.replace(`${BASE}/`);
+      } catch {
+        setError(
+          token
+            ? "This sign-in link has already been used. If you opened it before on this device, just open your inbox — you may still be signed in. Otherwise ask your administrator for a new link."
+            : "This sign-in link is missing its token. Ask your administrator for a new one.",
+        );
+      }
+    };
+
     if (!token) {
-      setError("This sign-in link is missing its token.");
+      void fallBackToSession();
       return;
     }
     api<{ taskId: string | null }>("/api/auth/magic", {
@@ -89,15 +106,16 @@ function MagicAuth() {
       .then(({ taskId }) => {
         window.location.replace(taskId ? `${BASE}/?task=${taskId}` : `${BASE}/`);
       })
-      .catch((reason: Error) => setError(reason.message));
+      .catch(() => void fallBackToSession());
   }, []);
 
   return (
     <main className="center-page">
       <div className="auth-card">
         <div className="logo-mark">H</div>
-        <h1>{error ? "Link unavailable" : "Opening your workspace"}</h1>
+        <h1>{error ? "Link already used" : "Opening your workspace"}</h1>
         <p>{error || "Verifying the secure link..."}</p>
+        {error && <a className="text-link" href={`${BASE}/`}>Open your inbox</a>}
       </div>
     </main>
   );
