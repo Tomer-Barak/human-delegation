@@ -6,6 +6,7 @@ export interface AppConfig {
   host: string;
   port: number;
   publicBaseUrl: string;
+  basePath: string;
   databasePath: string;
   attachmentDir: string;
   tokenSecret: string;
@@ -66,6 +67,10 @@ export function loadConfig(): AppConfig {
     host: required("HOST", "0.0.0.0"),
     port: positiveInteger("PORT", 3000),
     publicBaseUrl: required("PUBLIC_BASE_URL", "http://localhost:3000").replace(/\/$/, ""),
+    basePath: (() => {
+      const raw = (process.env.BASE_PATH ?? "").trim().replace(/\/+$/, "");
+      return raw && !raw.startsWith("/") ? `/${raw}` : raw;
+    })(),
     databasePath,
     attachmentDir,
     tokenSecret: required("TOKEN_SECRET"),

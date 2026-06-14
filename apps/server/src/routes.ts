@@ -144,9 +144,12 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     void reply.code(code).send(errorBody(error));
   });
 
-  app.get("/health", async () => ({ status: "ok" }));
+  const cookiePath = config.basePath || "/";
 
-  app.all("/mcp", async (request, reply) => {
+  await app.register(async (prefixed) => {
+  prefixed.get("/health", async () => ({ status: "ok" }));
+
+  prefixed.all("/mcp", async (request, reply) => {
     if (request.method !== "POST") {
       return reply.code(405).send({
         jsonrpc: "2.0",
@@ -178,14 +181,14 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     }
   });
 
-  app.get("/api/humans", async () => ({ humans: taskService.listHumans() }));
+  prefixed.get("/api/humans", async () => ({ humans: taskService.listHumans() }));
 
-  app.get("/api/admin/humans", async (request) => {
+  prefixed.get("/api/admin/humans", async (request) => {
     requireAdmin(request, config);
     return { humans: repository.listHumans(false) };
   });
 
-  app.post("/api/admin/humans", async (request, reply) => {
+  prefixed.post("/api/admin/humans", async (request, reply) => {
     requireAdmin(request, config);
     const body = request.body as {
       displayName: string;
@@ -220,7 +223,7 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     return reply.code(201).send({ human });
   });
 
-  app.patch("/api/admin/humans/:id", async (request, reply) => {
+  prefixed.patch("/api/admin/humans/:id", async (request, reply) => {
     requireAdmin(request, config);
     const { id } = request.params as { id: string };
     const body = request.body as {
@@ -259,23 +262,23 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     return human ? { human } : reply.code(404).send({ error: "Human not found" });
   });
 
-  app.post("/api/admin/humans/:id/login-link", async (request, reply) => {
+  prefixed.post("/api/admin/humans/:id/login-link", async (request, reply) => {
     requireAdmin(request, config);
     const { id } = request.params as { id: string };
     const human = repository.getHuman(id);
     if (!human) return reply.code(404).send({ error: "Human not found" });
     const token = repository.createMagicLink(id, undefined, config.signedLinkTtlSeconds);
-    return { url: `${config.publicBaseUrl}/auth?token=${encodeURIComponent(token)}` };
+    return { url: `${config.publicBaseUrl}${config.basePath}/auth?token=${encodeURIComponent(token)}` };
   });
 
-  app.get("/api/admin/api-keys", async (request) => {
+  prefixed.get("/api/admin/api-keys", async (request) => {
     requireAdmin(request, config);
     return {
       apiKeys: repository.listApiKeys().map(({ keyHash: _keyHash, ...key }) => key),
     };
   });
 
-  app.post("/api/admin/api-keys", async (request, reply) => {
+  prefixed.post("/api/admin/api-keys", async (request, reply) => {
     requireAdmin(request, config);
     const body = request.body as { name?: string };
     if (!body.name?.trim()) return reply.code(400).send({ error: "name is required" });
@@ -284,7 +287,7 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     return reply.code(201).send({ apiKey: key, token: created.raw });
   });
 
-  app.delete("/api/admin/api-keys/:id", async (request, reply) => {
+  prefixed.delete("/api/admin/api-keys/:id", async (request, reply) => {
     requireAdmin(request, config);
     const { id } = request.params as { id: string };
     return repository.revokeApiKey(id)
@@ -292,36 +295,36 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
       : reply.code(404).send({ error: "API key not found" });
   });
 
-  app.get("/api/admin/deliveries", async (request) => {
+  prefixed.get("/api/admin/deliveries", async (request) => {
     requireAdmin(request, config);
     const query = request.query as { taskId?: string };
     return { deliveries: repository.listDeliveryAttempts(query.taskId) };
   });
 
-  app.get("/api/admin/channel-health", async (request) => {
+  prefixed.get("/api/admin/channel-health", async (request) => {
     requireAdmin(request, config);
     return { channels: deps.dispatcher ? await deps.dispatcher.health() : [] };
   });
 
-  app.post("/api/auth/magic", async (request, reply) => {
+  prefixed.post("/api/auth/magic", async (request, reply) => {
     const body = request.body as { token?: string };
     if (!body.token) return reply.code(400).send({ error: "token is required" });
     const consumed = repository.consumeMagicLink(body.token);
     if (!consumed) return reply.code(401).send({ error: "Invalid or expired link" });
     const session = createHumanSession(consumed.humanId, config);
-    setHumanSessionCookie(reply, session, secureCookies(config));
+    setHumanSessionCookie(reply, session, secureCookies(config), cookiePath);
     return { taskId: consumed.taskId };
   });
 
-  app.post("/api/auth/logout", async (_request, reply) => {
+  prefixed.post("/api/auth/logout", async (_request, reply) => {
     reply.header(
       "set-cookie",
-      `dth_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureCookies(config) ? "; Secure" : ""}`,
+      `dth_session=; Path=${cookiePath}; HttpOnly; SameSite=Lax; Max-Age=0${secureCookies(config) ? "; Secure" : ""}`,
     );
     return reply.code(204).send();
   });
 
-  app.get("/api/human/me", async (request) => {
+  prefixed.get("/api/human/me", async (request) => {
     const session = requireHumanSession(request, config);
     const human = repository.getHuman(session.humanId);
     if (!human) throw Object.assign(new Error("Unauthorized"), { statusCode: 401 });
@@ -336,18 +339,18 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     };
   });
 
-  app.get("/api/human/tasks", async (request) => {
+  prefixed.get("/api/human/tasks", async (request) => {
     const session = requireHumanSession(request, config);
     return { tasks: taskService.listForHuman(session.humanId) };
   });
 
-  app.get("/api/human/tasks/:id", async (request) => {
+  prefixed.get("/api/human/tasks/:id", async (request) => {
     const session = requireHumanSession(request, config);
     const { id } = request.params as { id: string };
     return { task: taskService.getForHuman(session.humanId, id) };
   });
 
-  app.post("/api/human/tasks/:id/messages", async (request) => {
+  prefixed.post("/api/human/tasks/:id/messages", async (request) => {
     const session = requireHumanSession(request, config);
     const { id } = request.params as { id: string };
     const submission = await parseHumanSubmission(request);
@@ -363,7 +366,7 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     };
   });
 
-  app.post("/api/human/tasks/:id/result", async (request) => {
+  prefixed.post("/api/human/tasks/:id/result", async (request) => {
     const session = requireHumanSession(request, config);
     const { id } = request.params as { id: string };
     const submission = await parseHumanSubmission(request);
@@ -378,14 +381,14 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     };
   });
 
-  app.post("/api/human/tasks/:id/decline", async (request) => {
+  prefixed.post("/api/human/tasks/:id/decline", async (request) => {
     const session = requireHumanSession(request, config);
     const { id } = request.params as { id: string };
     const body = request.body as { reason?: string };
     return { task: taskService.decline(session.humanId, id, body.reason) };
   });
 
-  app.get("/api/human/attachments/:id", async (request, reply) => {
+  prefixed.get("/api/human/attachments/:id", async (request, reply) => {
     const session = requireHumanSession(request, config);
     const { id } = request.params as { id: string };
     const attachment = repository.getAttachment(id);
@@ -398,7 +401,7 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     return reply.send(storage.open(attachment.storageKey));
   });
 
-  app.get("/api/attachments/:id", async (request, reply) => {
+  prefixed.get("/api/attachments/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const query = request.query as { token?: string };
     if (!query.token) return reply.code(401).send({ error: "Missing token" });
@@ -424,7 +427,7 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
     return reply.send(storage.open(attachment.storageKey));
   });
 
-  app.post("/api/telegram/webhook", async (request, reply) => {
+  prefixed.post("/api/telegram/webhook", async (request, reply) => {
     if (
       config.telegramWebhookSecret &&
       request.headers["x-telegram-bot-api-secret-token"] !== config.telegramWebhookSecret
@@ -470,22 +473,23 @@ export async function buildApp(deps: Dependencies): Promise<FastifyInstance> {
 
   const webDist = resolve(process.cwd(), "apps/web/dist");
   if (existsSync(webDist)) {
-    await app.register(fastifyStatic, {
+    await prefixed.register(fastifyStatic, {
       root: webDist,
       wildcard: false,
     });
-    app.get("/*", async (request, reply) => {
+    prefixed.get("/*", async (request, reply) => {
       if (request.url.startsWith("/api/") || request.url === "/mcp") {
         return reply.code(404).send({ error: "Not found" });
       }
       return reply.sendFile("index.html");
     });
   } else {
-    app.get("/", async () => ({
+    prefixed.get("/", async () => ({
       name: "delegate-to-human",
       message: "Web UI has not been built. Run pnpm --filter @delegate-to-human/web build.",
     }));
   }
+  }, { prefix: config.basePath });
 
   return app;
 }

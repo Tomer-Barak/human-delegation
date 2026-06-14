@@ -27,6 +27,8 @@ type ChannelHealth = {
   message?: string;
 };
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 async function api<T>(
   path: string,
   init: RequestInit = {},
@@ -35,7 +37,7 @@ async function api<T>(
   const headers = new Headers(init.headers);
   if (!(init.body instanceof FormData)) headers.set("content-type", "application/json");
   if (adminToken) headers.set("authorization", `Bearer ${adminToken}`);
-  const response = await fetch(path, { ...init, headers, credentials: "include" });
+  const response = await fetch(`${BASE}${path}`, { ...init, headers, credentials: "include" });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Request failed (${response.status})`);
@@ -65,9 +67,9 @@ const statusLabels: Record<TaskStatus, string> = {
 };
 
 function App() {
-  const path = window.location.pathname;
-  if (path === "/admin") return <AdminApp />;
-  if (path === "/auth") return <MagicAuth />;
+  const rel = window.location.pathname.slice(BASE.length) || "/";
+  if (rel === "/admin" || rel === "/admin/") return <AdminApp />;
+  if (rel === "/auth" || rel === "/auth/") return <MagicAuth />;
   return <HumanApp />;
 }
 
@@ -85,7 +87,7 @@ function MagicAuth() {
       body: JSON.stringify({ token }),
     })
       .then(({ taskId }) => {
-        window.location.replace(taskId ? `/?task=${taskId}` : "/");
+        window.location.replace(taskId ? `${BASE}/?task=${taskId}` : `${BASE}/`);
       })
       .catch((reason: Error) => setError(reason.message));
   }, []);
@@ -145,7 +147,7 @@ function HumanApp() {
           <div className="logo-mark">H</div>
           <h1>Human delegation inbox</h1>
           <p>{error === "Unauthorized" ? "Use a secure sign-in link from your administrator or assignment notification." : error}</p>
-          <a className="text-link" href="/admin">Open admin console</a>
+          <a className="text-link" href={`${BASE}/admin`}>Open admin console</a>
         </div>
       </main>
     );
@@ -457,7 +459,7 @@ function AdminApp() {
             {value === "keys" ? "API keys" : value}
           </button>
         ))}
-        <a href="/">Human inbox</a>
+        <a href={`${BASE}/`}>Human inbox</a>
       </aside>
       <main className="admin-main">
         <header className="admin-header">

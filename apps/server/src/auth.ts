@@ -98,9 +98,10 @@ export function setHumanSessionCookie(
   reply: FastifyReply,
   token: string,
   secure: boolean,
+  cookiePath = "/",
 ): void {
   reply.header(
     "set-cookie",
-    `dth_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}${secure ? "; Secure" : ""}`,
+    `dth_session=${encodeURIComponent(token)}; Path=${cookiePath}; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}${secure ? "; Secure" : ""}`,
   );
 }

@@ -14,6 +14,7 @@ export function createTestContext() {
     host: "127.0.0.1",
     port: 0,
     publicBaseUrl: "http://localhost:3000",
+    basePath: "",
     databasePath: join(root, "test.db"),
     attachmentDir: join(root, "attachments"),
     tokenSecret: "test-token-secret-at-least-thirty-two-bytes",
