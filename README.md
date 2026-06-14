@@ -59,6 +59,10 @@ pnpm build
 pnpm start
 ```
 
+> **Note:** static assets are content-hashed and enumerated at server start.
+> Always rebuild *before* starting (or restart after a rebuild) — rebuilding
+> the web bundle under an already-running server serves stale assets.
+
 Open:
 
 - Human inbox: `http://localhost:3000/`
