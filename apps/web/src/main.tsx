@@ -506,6 +506,7 @@ function HumansPanel({
 }) {
   const [showForm, setShowForm] = useState(false);
   const [loginLink, setLoginLink] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const create = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -535,6 +536,22 @@ function HumansPanel({
     await refresh();
   };
 
+  const save = async (id: string, event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    await api(`/api/admin/humans/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        displayName: data.get("displayName")?.toString().trim() || undefined,
+        availability: data.get("availability")?.toString().trim() || undefined,
+        skills: data.get("skills")?.toString().split(",").map((s) => s.trim()).filter(Boolean),
+        timezone: data.get("timezone")?.toString().trim() || undefined,
+      }),
+    }, token);
+    setEditingId(null);
+    await refresh();
+  };
+
   return (
     <section className="admin-panel">
       <div className="panel-heading">
@@ -557,13 +574,33 @@ function HumansPanel({
       )}
       <div className="data-table">
         <div className="table-row table-head"><span>Human</span><span>Skills</span><span>Channels</span><span>Availability</span><span /></div>
-        {humans.map((human) => (
+        {humans.map((human) => editingId === human.id ? (
+          <form key={human.id} className="admin-form edit-row-form" onSubmit={(e) => void save(human.id, e)}>
+            <label>Name<input name="displayName" defaultValue={human.displayName} required /></label>
+            <label>Availability
+              <select name="availability" defaultValue={human.availability}>
+                <option value="available">available</option>
+                <option value="busy">busy</option>
+                <option value="away">away</option>
+                <option value="on leave">on leave</option>
+              </select>
+            </label>
+            <label>Skills<input name="skills" defaultValue={human.skills.join(", ")} /></label>
+            <label>Timezone<input name="timezone" defaultValue={human.timezone} /></label>
+            <div className="form-span form-actions">
+              <button className="primary-button">Save</button>
+              <button type="button" className="secondary-button" onClick={() => setEditingId(null)}>Cancel</button>
+            </div>
+          </form>
+        ) : (
           <div className="table-row" key={human.id}>
             <span><strong>{human.displayName}</strong><small>{human.timezone}</small></span>
             <span className="tag-list">{human.skills.map((skill) => <i key={skill}>{skill}</i>)}</span>
             <span className="tag-list">{human.channels.map((channel) => <i key={channel}>{channel}</i>)}</span>
             <span>{human.availability}</span>
             <span>
+              <button className="text-button" onClick={() => setEditingId(human.id)}>Edit</button>
+              {" · "}
               <button
                 className="text-button"
                 onClick={async () => {
@@ -575,7 +612,7 @@ function HumansPanel({
                   setLoginLink(response.url);
                 }}
               >
-                Create login link
+                Login link
               </button>
             </span>
           </div>

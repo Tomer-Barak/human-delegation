@@ -17,7 +17,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
-button, input, textarea { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
@@ -157,6 +157,7 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(23,108,74,
 .form-span { grid-column: 1 / -1; color: var(--muted); }
 .form-actions { text-align: right; }
 .data-table { overflow-x: auto; }
+.edit-row-form { grid-template-columns: repeat(2, 1fr); border-bottom: 1px solid var(--line); }
 .table-row { min-width: 800px; display: grid; grid-template-columns: 1.1fr 1.4fr 1fr .8fr 1fr; gap: 16px; align-items: center; padding: 14px 24px; border-bottom: 1px solid #edf0eb; font-size: 12px; }
 .table-row:last-child { border-bottom: 0; }
 .table-row > span strong, .table-row > span small { display: block; }
